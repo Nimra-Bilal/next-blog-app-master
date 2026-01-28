@@ -260,13 +260,156 @@
 
 
 
+// import { connectDB } from "@/lib/config/connectDB";
+// import BlogModel from "@/lib/models/BlogModel";
+// import { writeFile } from "fs/promises";
+// import fs from "fs";
+// import { NextResponse } from "next/server";
+
+// // Connect to DB once when module loads
+// let dbConnected = false;
+
+// const ensureDBConnected = async () => {
+//   if (!dbConnected) {
+//     await connectDB();
+//     dbConnected = true;
+//   }
+// };
+
+// // ========== GET all blogs or a single blog ==========
+// export async function GET(request) {
+//   try {
+//     await ensureDBConnected();
+    
+//     const blogId = request.nextUrl.searchParams.get("id");
+
+//     if (blogId) {
+//       const blog = await BlogModel.findById(blogId);
+//       if (!blog) {
+//         return NextResponse.json({ error: "Blog not found" }, { status: 404 });
+//       }
+//       return NextResponse.json(blog);
+//     } else {
+//       const blogs = await BlogModel.find({});
+//       console.log("✅ Blog GET successful - Found", blogs.length, "blogs");
+//       return NextResponse.json({ blogs });
+//     }
+//   } catch (err) {
+//     console.error("❌ GET /api/blog error:", err.message);
+//     return NextResponse.json(
+//       { error: "Failed to fetch blogs", details: err.message },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// // ========== POST a new blog ==========
+// export async function POST(request) {
+//   console.log("📨 POST /api/blog received");
+  
+//   try {
+//     await ensureDBConnected();
+    
+//     const formData = await request.formData();
+//     const image = formData.get("image");
+
+//     // Handle image upload
+//     let imgUrl = "/Assets/default-blog.jpg"; // Default image
+//     if (image && typeof image !== "string") {
+//       const timestamp = Date.now();
+//       const imageByteData = await image.arrayBuffer();
+//       const buffer = Buffer.from(imageByteData);
+//       const path = `./public/uploads/${timestamp}_${image.name}`;
+      
+//       // Ensure uploads directory exists
+//       if (!fs.existsSync('./public/uploads')) {
+//         fs.mkdirSync('./public/uploads', { recursive: true });
+//       }
+      
+//       await writeFile(path, buffer);
+//       imgUrl = `/uploads/${timestamp}_${image.name}`;
+//       console.log("📸 Image saved to:", imgUrl);
+//     }
+
+//     // Build blog data
+//     const blogData = {
+//       title: formData.get("title") || "Untitled",
+//       description: formData.get("description") || "",
+//       category: formData.get("category") || "General",
+//       author: formData.get("author") || "Admin",
+//       image: imgUrl,
+//       authImg: formData.get("authImg") || "/Assets/author_img.png",
+//     };
+
+//     console.log("📝 Creating blog with data:", blogData);
+    
+//     const newBlog = await BlogModel.create(blogData);
+//     console.log("✅ Blog saved with ID:", newBlog._id);
+    
+//     return NextResponse.json({ 
+//       success: true, 
+//       message: "Blog added successfully",
+//       blog: newBlog 
+//     }, { status: 201 });
+    
+//   } catch (err) {
+//     console.error("❌ POST /api/blog error:", err.message);
+//     console.error("Error stack:", err.stack);
+    
+//     return NextResponse.json(
+//       { 
+//         error: "Upload failed", 
+//         details: err.message,
+//         suggestion: "Check MongoDB connection and form data"
+//       },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// // ========== DELETE a blog ==========
+// export async function DELETE(request) {
+//   try {
+//     await ensureDBConnected();
+    
+//     const id = request.nextUrl.searchParams.get("id");
+//     if (!id) {
+//       return NextResponse.json({ error: "Blog ID is required" }, { status: 400 });
+//     }
+
+//     const blog = await BlogModel.findById(id);
+//     if (!blog) {
+//       return NextResponse.json({ error: "Blog not found" }, { status: 404 });
+//     }
+
+//     // Remove image file if exists
+//     if (blog.image && blog.image.startsWith('/uploads/')) {
+//       const imagePath = `./public${blog.image}`;
+//       if (fs.existsSync(imagePath)) {
+//         fs.unlinkSync(imagePath);
+//         console.log("🗑️ Deleted image:", imagePath);
+//       }
+//     }
+
+//     await BlogModel.findByIdAndDelete(id);
+//     return NextResponse.json({ success: true, message: "Blog deleted!" });
+    
+//   } catch (err) {
+//     console.error("❌ DELETE /api/blog error:", err.message);
+//     return NextResponse.json(
+//       { error: "Failed to delete blog", details: err.message },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+
+
 import { connectDB } from "@/lib/config/connectDB";
 import BlogModel from "@/lib/models/BlogModel";
-import { writeFile } from "fs/promises";
-import fs from "fs";
+import cloudinary from "@/lib/config/cloudinary";
 import { NextResponse } from "next/server";
 
-// Connect to DB once when module loads
 let dbConnected = false;
 
 const ensureDBConnected = async () => {
@@ -276,11 +419,10 @@ const ensureDBConnected = async () => {
   }
 };
 
-// ========== GET all blogs or a single blog ==========
+// ================= GET =================
 export async function GET(request) {
   try {
     await ensureDBConnected();
-    
     const blogId = request.nextUrl.searchParams.get("id");
 
     if (blogId) {
@@ -289,13 +431,12 @@ export async function GET(request) {
         return NextResponse.json({ error: "Blog not found" }, { status: 404 });
       }
       return NextResponse.json(blog);
-    } else {
-      const blogs = await BlogModel.find({});
-      console.log("✅ Blog GET successful - Found", blogs.length, "blogs");
-      return NextResponse.json({ blogs });
     }
+
+    const blogs = await BlogModel.find({});
+    return NextResponse.json({ blogs });
+
   } catch (err) {
-    console.error("❌ GET /api/blog error:", err.message);
     return NextResponse.json(
       { error: "Failed to fetch blogs", details: err.message },
       { status: 500 }
@@ -303,78 +444,69 @@ export async function GET(request) {
   }
 }
 
-// ========== POST a new blog ==========
+// ================= POST =================
 export async function POST(request) {
-  console.log("📨 POST /api/blog received");
-  
   try {
     await ensureDBConnected();
-    
+
     const formData = await request.formData();
     const image = formData.get("image");
 
-    // Handle image upload
-    let imgUrl = "/Assets/default-blog.jpg"; // Default image
+    let imageUrl = "/Assets/default-blog.jpg";
+    let imagePublicId = "";
+
+    // 🔥 Upload to Cloudinary
     if (image && typeof image !== "string") {
-      const timestamp = Date.now();
-      const imageByteData = await image.arrayBuffer();
-      const buffer = Buffer.from(imageByteData);
-      const path = `./public/uploads/${timestamp}_${image.name}`;
-      
-      // Ensure uploads directory exists
-      if (!fs.existsSync('./public/uploads')) {
-        fs.mkdirSync('./public/uploads', { recursive: true });
-      }
-      
-      await writeFile(path, buffer);
-      imgUrl = `/uploads/${timestamp}_${image.name}`;
-      console.log("📸 Image saved to:", imgUrl);
+      const bytes = await image.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      const uploadResult = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          { folder: "blogs" },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        ).end(buffer);
+      });
+
+      imageUrl = uploadResult.secure_url;
+      imagePublicId = uploadResult.public_id;
     }
 
-    // Build blog data
     const blogData = {
       title: formData.get("title") || "Untitled",
       description: formData.get("description") || "",
       category: formData.get("category") || "General",
       author: formData.get("author") || "Admin",
-      image: imgUrl,
+      image: imageUrl,
+      imagePublicId,
       authImg: formData.get("authImg") || "/Assets/author_img.png",
     };
 
-    console.log("📝 Creating blog with data:", blogData);
-    
     const newBlog = await BlogModel.create(blogData);
-    console.log("✅ Blog saved with ID:", newBlog._id);
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: "Blog added successfully",
-      blog: newBlog 
-    }, { status: 201 });
-    
-  } catch (err) {
-    console.error("❌ POST /api/blog error:", err.message);
-    console.error("Error stack:", err.stack);
-    
+
     return NextResponse.json(
-      { 
-        error: "Upload failed", 
-        details: err.message,
-        suggestion: "Check MongoDB connection and form data"
-      },
+      { success: true, message: "Blog added successfully", blog: newBlog },
+      { status: 201 }
+    );
+
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Upload failed", details: err.message },
       { status: 500 }
     );
   }
 }
 
-// ========== DELETE a blog ==========
+// ================= DELETE =================
 export async function DELETE(request) {
   try {
     await ensureDBConnected();
-    
+
     const id = request.nextUrl.searchParams.get("id");
     if (!id) {
-      return NextResponse.json({ error: "Blog ID is required" }, { status: 400 });
+      return NextResponse.json({ error: "Blog ID required" }, { status: 400 });
     }
 
     const blog = await BlogModel.findById(id);
@@ -382,22 +514,21 @@ export async function DELETE(request) {
       return NextResponse.json({ error: "Blog not found" }, { status: 404 });
     }
 
-    // Remove image file if exists
-    if (blog.image && blog.image.startsWith('/uploads/')) {
-      const imagePath = `./public${blog.image}`;
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-        console.log("🗑️ Deleted image:", imagePath);
-      }
+    // 🔥 Delete from Cloudinary
+    if (blog.imagePublicId) {
+      await cloudinary.uploader.destroy(blog.imagePublicId);
     }
 
     await BlogModel.findByIdAndDelete(id);
-    return NextResponse.json({ success: true, message: "Blog deleted!" });
-    
+
+    return NextResponse.json({
+      success: true,
+      message: "Blog deleted successfully",
+    });
+
   } catch (err) {
-    console.error("❌ DELETE /api/blog error:", err.message);
     return NextResponse.json(
-      { error: "Failed to delete blog", details: err.message },
+      { error: "Delete failed", details: err.message },
       { status: 500 }
     );
   }
