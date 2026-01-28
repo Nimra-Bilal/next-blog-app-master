@@ -149,6 +149,7 @@ const Page = ({ params }) => {
     width={1280}
     height={720}
     alt=""
+    unoptimized
     className="border-4 border-white"
   />
 )}

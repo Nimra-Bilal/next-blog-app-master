@@ -60,6 +60,7 @@ const BlogItem = ({ title, description, category, image, id }) => {
           src={image}
           width={400}
           height={400}
+          unoptimized
           className="border-b border-blue-200 object-cover"
           alt=""
         />

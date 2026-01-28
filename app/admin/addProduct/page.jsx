@@ -321,6 +321,7 @@ const page = () => {
             <Image
               src={image ? URL.createObjectURL(image) : assets.upload_area}
               alt=""
+              unoptimized
               width={140}
               height={70}
               className="object-cover rounded-lg"
