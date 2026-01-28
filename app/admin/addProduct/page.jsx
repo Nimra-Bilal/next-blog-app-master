@@ -318,7 +318,7 @@ const page = () => {
 
         <label htmlFor="image" className="cursor-pointer">
           <div className="w-[140px] h-[80px] border-2 border-dashed border-indigo-400 rounded-lg flex items-center justify-center hover:bg-indigo-50 transition">
-            <Image
+            <img
               src={image ? URL.createObjectURL(image) : assets.upload_area}
               alt=""
               unoptimized
